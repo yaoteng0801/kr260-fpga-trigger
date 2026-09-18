@@ -34,7 +34,7 @@ in [`docs/PROVENANCE.md`](docs/PROVENANCE.md), and measured local verification
 plus the board procedure are in
 [`docs/HARDWARE_VERIFICATION.md`](docs/HARDWARE_VERIFICATION.md).
 
-The 19-slide English technical overview is available as
+The 13-slide English project overview, written for a physics audience, is available as
 [`KR260_FPGA_Trigger_Project_Slides.html`](KR260_FPGA_Trigger_Project_Slides.html).
 Open it in a browser and use the arrow keys to navigate or `Ctrl+P` to export
 the slides to PDF.

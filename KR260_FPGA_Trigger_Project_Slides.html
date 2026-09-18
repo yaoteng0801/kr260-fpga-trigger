@@ -3,810 +3,239 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>KR260 FPGA Trigger Project</title>
+  <title>From Event Data to an FPGA Trigger Decision</title>
   <style>
-    :root {
-      --ink: #101828;
-      --muted: #5f6b7a;
-      --line: #cfd6df;
-      --panel: #f1f4f7;
-      --panel-2: #e8f4fb;
-      --accent: #0077b6;
-      --accent-2: #39a9db;
-      --good: #16835a;
-      --warn: #c26a00;
-      --bad: #b42318;
-      --canvas: #ffffff;
-    }
-
+    :root { --ink:#102235; --muted:#526576; --blue:#006fae; --cyan:#44a8d1; --pale:#eaf4f9; --soft:#f3f6f8; --line:#cbd5dc; --good:#16835a; --warn:#b75c00; --paper:#fff; }
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; background: #dfe4ea; }
-    body {
-      font-family: "Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
-      color: var(--ink);
-      overflow: hidden;
-    }
-
-    .deck {
-      position: fixed;
-      inset: 0;
-      display: grid;
-      place-items: center;
-    }
-
-    .slide {
-      display: none;
-      position: relative;
-      width: min(100vw, calc(100vh * 16 / 9));
-      height: min(100vh, calc(100vw * 9 / 16));
-      aspect-ratio: 16 / 9;
-      padding: clamp(28px, 4.1vh, 52px) clamp(38px, 5vw, 72px);
-      background: var(--canvas);
-      overflow: hidden;
-      box-shadow: 0 18px 70px rgba(16, 24, 40, .20);
-    }
-    .slide.active { display: block; }
-
-    .kicker {
-      margin: 0 0 12px;
-      color: var(--accent);
-      font-size: clamp(13px, 1.4vw, 18px);
-      font-weight: 800;
-      letter-spacing: .10em;
-      text-transform: uppercase;
-    }
-    h1 {
-      margin: 0;
-      font-size: clamp(48px, 6.5vw, 82px);
-      line-height: 1.06;
-      letter-spacing: -.04em;
-      max-width: 1080px;
-    }
-    h2 {
-      margin: 0 0 clamp(18px, 2.8vh, 30px);
-      font-size: clamp(34px, 4vw, 50px);
-      line-height: 1.08;
-      letter-spacing: -.025em;
-      max-width: 1160px;
-    }
-    h3 {
-      margin: 0 0 10px;
-      font-size: clamp(21px, 2vw, 28px);
-      line-height: 1.18;
-    }
-    p, li, td, th {
-      font-size: clamp(16px, 1.55vw, 21px);
-      line-height: 1.42;
-    }
-    p { margin: 0 0 12px; }
-    ul, ol { margin: 8px 0 0; padding-left: 1.25em; }
-    li { margin: 0 0 9px; }
-    strong { font-weight: 800; }
-    code, pre {
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    }
-    code {
-      background: #edf1f5;
-      border-radius: 4px;
-      padding: .08em .28em;
-      font-size: .90em;
-    }
-    pre {
-      margin: 0;
-      padding: 18px 20px;
-      background: #101828;
-      color: #e7f7ff;
-      border-left: 6px solid var(--accent-2);
-      font-size: clamp(14px, 1.26vw, 18px);
-      line-height: 1.48;
-      white-space: pre-wrap;
-      border-radius: 2px;
-    }
-
-    .lead {
-      margin-top: clamp(26px, 4vh, 46px);
-      max-width: 800px;
-      color: var(--muted);
-      font-size: clamp(22px, 2.5vw, 32px);
-      line-height: 1.34;
-    }
-    .rule { width: 150px; height: 6px; background: var(--accent); margin: 34px 0; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
-    .split-40 { display: grid; grid-template-columns: .82fr 1.18fr; gap: 46px; align-items: start; }
-    .split-60 { display: grid; grid-template-columns: 1.18fr .82fr; gap: 46px; align-items: start; }
-    .stack { display: grid; gap: 18px; }
-
-    .panel {
-      background: var(--panel);
-      border-top: 5px solid var(--ink);
-      padding: 20px 22px;
-      min-height: 150px;
-    }
-    .panel.blue { background: var(--panel-2); border-color: var(--accent); }
-    .panel.good { border-color: var(--good); }
-    .panel.warn { border-color: var(--warn); }
-    .panel p:last-child, .panel ul:last-child { margin-bottom: 0; }
-
-    .metric-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 26px;
-      margin-top: 28px;
-    }
-    .metric {
-      background: var(--panel);
-      min-height: 220px;
-      padding: 28px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      border-bottom: 8px solid var(--accent);
-    }
-    .metric .value {
-      font-size: clamp(38px, 5vw, 66px);
-      line-height: 1;
-      font-weight: 850;
-      letter-spacing: -.04em;
-      color: var(--accent);
-    }
-    .metric .label {
-      margin-top: 14px;
-      color: var(--muted);
-      font-size: clamp(16px, 1.6vw, 21px);
-      line-height: 1.35;
-    }
-
-    .flow {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 12px;
-      align-items: stretch;
-      margin-top: 38px;
-    }
-    .flow .node {
-      min-height: 190px;
-      padding: 20px 14px;
-      background: var(--panel);
-      border-top: 6px solid var(--accent);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      text-align: center;
-    }
-    .flow .node b { font-size: clamp(17px, 1.7vw, 23px); line-height: 1.18; }
-    .flow .node span { margin-top: 10px; color: var(--muted); font-size: clamp(13px, 1.15vw, 16px); line-height: 1.35; }
-    .flow .arrow { align-self: center; font-size: clamp(25px, 3vw, 42px); color: var(--accent); text-align: center; }
-    .flow.cols-4 { grid-template-columns: 1fr 55px 1fr 55px 1fr 55px 1fr; }
-
-    .plane {
-      display: grid;
-      grid-template-columns: 180px 1fr;
-      gap: 18px;
-      margin-bottom: 20px;
-      align-items: stretch;
-    }
-    .plane .name {
-      display: grid;
-      place-items: center;
-      padding: 16px;
-      color: white;
-      font-weight: 850;
-      font-size: clamp(19px, 1.8vw, 24px);
-      background: var(--ink);
-    }
-    .plane.data .name { background: var(--accent); }
-    .plane .path {
-      display: grid;
-      grid-auto-flow: column;
-      grid-auto-columns: 1fr;
-      gap: 10px;
-      align-items: center;
-      background: var(--panel);
-      padding: 18px;
-    }
-    .plane .path span {
-      padding: 11px 10px;
-      text-align: center;
-      background: white;
-      border: 1px solid var(--line);
-      font-size: clamp(14px, 1.3vw, 18px);
-      line-height: 1.25;
-    }
-
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    th {
-      background: var(--ink);
-      color: white;
-      text-align: left;
-      font-weight: 750;
-      padding: 11px 13px;
-    }
-    td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; }
-    tbody tr:nth-child(even) td { background: #f7f9fb; }
-    .compact td, .compact th { font-size: clamp(14px, 1.25vw, 18px); padding: 8px 10px; }
-
-    .bitword {
-      display: grid;
-      grid-template-columns: repeat(8, 1fr);
-      border: 2px solid var(--ink);
-      margin: 18px 0 26px;
-    }
-    .bitword div {
-      min-height: 86px;
-      display: grid;
-      place-items: center;
-      text-align: center;
-      padding: 9px;
-      border-right: 1px solid var(--ink);
-      font-size: clamp(14px, 1.3vw, 18px);
-      line-height: 1.25;
-    }
-    .bitword div:last-child { border-right: 0; }
-    .bitword .wide { grid-column: span 4; }
-    .bitword .accent { background: var(--panel-2); font-weight: 800; }
-
-    .timeline {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-      margin-top: 58px;
-      position: relative;
-    }
-    .timeline::before {
-      content: "";
-      position: absolute;
-      left: 0; right: 0; top: 20px;
-      height: 3px;
-      background: var(--line);
-    }
-    .milestone { position: relative; padding-top: 58px; }
-    .milestone::before {
-      content: "";
-      position: absolute;
-      top: 9px; left: 0;
-      width: 24px; height: 24px;
-      border-radius: 50%;
-      background: var(--accent);
-      border: 5px solid white;
-      box-shadow: 0 0 0 2px var(--accent);
-    }
-    .milestone .tag { font-weight: 850; color: var(--accent); font-size: 18px; }
-    .milestone p { margin-top: 8px; color: var(--muted); }
-
-    .status {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      color: white;
-      background: var(--good);
-      font-weight: 800;
-      font-size: .82em;
-    }
-    .status.pending { background: var(--warn); }
-    .status.no { background: var(--bad); }
-
-    .quote {
-      font-size: clamp(30px, 3.5vw, 48px);
-      line-height: 1.25;
-      letter-spacing: -.025em;
-      max-width: 1050px;
-      margin-top: 50px;
-    }
-    .takeaway {
-      position: absolute;
-      left: clamp(38px, 5vw, 72px);
-      right: clamp(38px, 5vw, 72px);
-      bottom: clamp(48px, 7vh, 76px);
-      border-left: 8px solid var(--accent);
-      padding: 15px 20px;
-      background: var(--panel-2);
-      font-size: clamp(18px, 1.8vw, 24px);
-      font-weight: 700;
-    }
-
-    .footer {
-      position: absolute;
-      left: clamp(38px, 5vw, 72px);
-      right: clamp(38px, 5vw, 72px);
-      bottom: 16px;
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      color: #7b8794;
-      font-size: clamp(10px, .90vw, 13px);
-      line-height: 1.2;
-    }
-    .footer span:last-child { white-space: nowrap; }
-
-    .controls {
-      position: fixed;
-      right: 18px;
-      bottom: 18px;
-      z-index: 50;
-      display: flex;
-      gap: 8px;
-      opacity: .06;
-      transition: opacity .18s ease;
-    }
-    .controls:hover, .controls:focus-within { opacity: .92; }
-    .controls button {
-      border: 0;
-      border-radius: 6px;
-      padding: 9px 13px;
-      color: white;
-      background: rgba(16, 24, 40, .90);
-      font: inherit;
-      cursor: pointer;
-    }
-    .counter {
-      display: none;
-    }
-    .speaker-notes {
-      display: none;
-      position: fixed;
-      z-index: 60;
-      left: 3vw; right: 3vw; bottom: 3vh;
-      max-height: 35vh;
-      overflow: auto;
-      padding: 16px 20px;
-      color: #f7fbff;
-      background: rgba(16, 24, 40, .96);
-      border-left: 6px solid var(--accent-2);
-      box-shadow: 0 8px 30px rgba(0,0,0,.3);
-      font-size: 16px;
-      line-height: 1.5;
-    }
-    body.notes-on .slide.active .speaker-notes { display: block; }
-
-    @media (max-width: 850px) {
-      .slide { padding: 28px 34px; }
-      .grid-2, .grid-3, .split-40, .split-60 { gap: 18px; }
-      .flow .node { min-height: 150px; padding: 10px 8px; }
-      .metric { min-height: 170px; padding: 18px; }
-      .plane { grid-template-columns: 130px 1fr; }
-    }
-
-    @media print {
-      @page { size: 13.333in 7.5in; margin: 0; }
-      html, body { background: white; overflow: visible; }
-      .deck { position: static; display: block; }
-      .slide, .slide.active {
-        display: block;
-        width: 13.333in;
-        height: 7.5in;
-        break-after: page;
-        page-break-after: always;
-        box-shadow: none;
-      }
-      .controls, .counter, .speaker-notes { display: none !important; }
-    }
+    html, body { margin:0; min-height:100%; background:#dce3e8; }
+    body { color:var(--ink); font-family:Inter,"Noto Sans","Segoe UI",Arial,sans-serif; overflow:hidden; }
+    sub { font-size:.62em; }
+    .deck { position:fixed; inset:0; display:grid; place-items:center; }
+    .slide { display:none; position:relative; width:min(100vw,calc(100vh * 16 / 9)); height:min(100vh,calc(100vw * 9 / 16)); aspect-ratio:16/9; padding:clamp(28px,4.2vh,54px) clamp(42px,5.4vw,76px); overflow:hidden; background:var(--paper); box-shadow:0 18px 70px rgba(16,34,53,.20); }
+    .slide.active { display:block; }
+    h1 { max-width:1100px; margin:0; font-size:clamp(48px,6.4vw,82px); line-height:1.04; letter-spacing:-.045em; }
+    h2 { max-width:1180px; margin:0 0 clamp(22px,3vh,34px); font-size:clamp(35px,4vw,51px); line-height:1.08; letter-spacing:-.03em; }
+    h3 { margin:0 0 10px; font-size:clamp(22px,2.1vw,29px); line-height:1.18; }
+    p, li, td, th { font-size:clamp(16px,1.55vw,21px); line-height:1.42; }
+    p { margin:0 0 12px; }
+    ul, ol { margin:10px 0 0; padding-left:1.25em; }
+    li { margin:0 0 10px; }
+    code, pre { font-family:"SFMono-Regular",Consolas,monospace; }
+    code { padding:.08em .25em; border-radius:4px; background:#edf1f4; }
+    pre { margin:0; padding:18px 22px; color:#e8f7ff; background:var(--ink); border-left:6px solid var(--cyan); border-radius:2px; font-size:clamp(15px,1.4vw,19px); line-height:1.48; white-space:pre-wrap; }
+    .kicker { margin:0 0 12px; color:var(--blue); font-size:clamp(13px,1.35vw,18px); font-weight:800; letter-spacing:.10em; text-transform:uppercase; }
+    .lead { max-width:880px; margin-top:clamp(28px,4.2vh,48px); color:var(--muted); font-size:clamp(23px,2.6vw,34px); line-height:1.33; }
+    .rule { width:150px; height:6px; margin:34px 0; background:var(--blue); }
+    .quote { max-width:1040px; margin:28px 0 0; font-size:clamp(29px,3.45vw,47px); line-height:1.22; letter-spacing:-.025em; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:50px; }
+    .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:30px; }
+    .split-60 { display:grid; grid-template-columns:1.18fr .82fr; gap:48px; }
+    .stack { display:grid; gap:17px; }
+    .panel { padding:19px 22px; background:var(--soft); border-left:6px solid var(--ink); }
+    .panel.blue { background:var(--pale); border-color:var(--blue); }
+    .panel.good { border-color:var(--good); }
+    .panel.warn { border-color:var(--warn); }
+    .panel p:last-child, .panel ul:last-child { margin-bottom:0; }
+    .role { min-height:370px; padding:26px 30px; border-top:7px solid var(--ink); background:var(--soft); }
+    .role.pl { border-color:var(--blue); background:var(--pale); }
+    .role .kicker { margin-bottom:16px; }
+    .lane { display:grid; grid-template-columns:170px 1fr; gap:18px; margin-bottom:22px; align-items:stretch; }
+    .lane-name { display:grid; place-items:center; padding:14px; color:white; background:var(--ink); font-size:clamp(19px,1.8vw,24px); font-weight:800; text-align:center; }
+    .lane.data .lane-name { background:var(--blue); }
+    .lane-path { display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:9px; padding:15px; background:var(--soft); }
+    .lane-path span { display:grid; place-items:center; min-width:0; padding:10px 8px; border:1px solid var(--line); background:white; font-size:clamp(13px,1.17vw,17px); line-height:1.25; text-align:center; }
+    .bitword { display:grid; grid-template-columns:1fr 1fr; margin:18px 0 26px; border:2px solid var(--ink); }
+    .bitword div { display:grid; min-height:90px; padding:12px; place-items:center; border-right:1px solid var(--ink); font-size:clamp(16px,1.45vw,20px); line-height:1.3; text-align:center; }
+    .bitword div:last-child { border-right:0; }
+    .bitword .accent { background:var(--pale); font-weight:800; }
+    .timeline { position:relative; display:grid; grid-template-columns:repeat(4,1fr); gap:24px; margin-top:46px; }
+    .timeline::before { content:""; position:absolute; top:18px; left:0; right:0; height:3px; background:var(--line); }
+    .step { position:relative; padding-top:54px; }
+    .step::before { content:""; position:absolute; top:7px; left:0; width:23px; height:23px; border:5px solid white; border-radius:50%; background:var(--blue); box-shadow:0 0 0 2px var(--blue); }
+    .step .tag { margin-bottom:10px; color:var(--blue); font-size:clamp(14px,1.3vw,18px); font-weight:850; }
+    .step p { color:var(--muted); }
+    table { width:100%; table-layout:fixed; border-collapse:collapse; }
+    th { padding:10px 12px; color:white; background:var(--ink); font-weight:750; text-align:left; }
+    td { padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+    tbody tr:nth-child(even) td { background:#f6f8fa; }
+    .compact td, .compact th { padding:8px 10px; font-size:clamp(14px,1.26vw,18px); }
+    .status { display:inline-block; padding:4px 10px; color:white; background:var(--good); border-radius:999px; font-size:.84em; font-weight:800; white-space:nowrap; }
+    .metric-row { display:grid; grid-template-columns:repeat(3,1fr); gap:25px; }
+    .metric { display:flex; min-height:210px; padding:25px; flex-direction:column; justify-content:flex-end; background:var(--soft); border-bottom:8px solid var(--blue); }
+    .metric .value { color:var(--blue); font-size:clamp(37px,4.7vw,63px); font-weight:850; letter-spacing:-.045em; line-height:1; }
+    .metric .label { margin-top:14px; color:var(--muted); font-size:clamp(16px,1.45vw,20px); }
+    .takeaway { position:absolute; left:clamp(42px,5.4vw,76px); right:clamp(42px,5.4vw,76px); bottom:clamp(50px,7.2vh,78px); padding:14px 20px; background:var(--pale); border-left:8px solid var(--blue); font-size:clamp(18px,1.78vw,24px); font-weight:720; line-height:1.35; }
+    .footer { position:absolute; left:clamp(42px,5.4vw,76px); right:clamp(42px,5.4vw,76px); bottom:16px; display:flex; justify-content:space-between; gap:20px; color:#758492; font-size:clamp(10px,.88vw,13px); line-height:1.2; }
+    .footer span:last-child { white-space:nowrap; }
+    .controls { position:fixed; right:18px; bottom:18px; z-index:50; display:flex; gap:8px; opacity:.07; transition:opacity .18s ease; }
+    .controls:hover, .controls:focus-within { opacity:.94; }
+    .controls button { padding:9px 13px; color:white; background:rgba(16,34,53,.92); border:0; border-radius:5px; cursor:pointer; font:inherit; }
+    .counter { display:none; }
+    .speaker-notes { display:none; position:fixed; z-index:60; left:3vw; right:3vw; bottom:3vh; max-height:35vh; padding:16px 20px; overflow:auto; color:#f7fbff; background:rgba(16,34,53,.97); border-left:6px solid var(--cyan); box-shadow:0 8px 30px rgba(0,0,0,.3); font-size:16px; line-height:1.5; }
+    body.notes-on .slide.active .speaker-notes { display:block; }
+    @media (max-width:850px) { .slide { padding:28px 34px; } .grid-2,.grid-3,.split-60 { gap:18px; } .lane { grid-template-columns:125px 1fr; } .metric { min-height:170px; padding:18px; } }
+    @media print { @page { size:13.333in 7.5in; margin:0; } html,body { overflow:visible; background:white; } .deck { position:static; display:block; } .slide,.slide.active { display:block; width:13.333in; height:7.5in; break-after:page; page-break-after:always; box-shadow:none; } .controls,.counter,.speaker-notes { display:none !important; } }
   </style>
 </head>
 <body>
 <main class="deck">
-
   <section class="slide active">
-    <p class="kicker">KR260 · AXI DMA · PYNQ · HDF5</p>
-    <h1>KR260 FPGA<br>Trigger Prototype</h1>
+    <p class="kicker">Physics trigger demonstrator · AMD/Xilinx KR260</p>
+    <h1>From Event Data<br>to an FPGA Trigger Decision</h1>
     <div class="rule"></div>
-    <p class="lead">Streams HDF5 events from PS DDR into the PL, evaluates parallel fixed-point thresholds, and validates every FPGA result on real hardware.</p>
-    <div class="footer"><span>Technical project overview · 2026-09-18　｜　←/→ Navigate · N Notes · Ctrl+P Export PDF</span><span>01 / 19</span></div>
-    <aside class="speaker-notes">This technical review answers three questions: how the hardware data path is built, how software moves HDF5 data into the FPGA, and what was verified on the physical KR260.</aside>
+    <p class="lead">A complete Zynq prototype in which the ARM processor prepares event data and the FPGA makes a deterministic keep/reject decision.</p>
+    <div class="footer"><span>Project overview · hardware, software, and physical-board validation</span><span>01 / 13</span></div>
+    <aside class="speaker-notes">The central question is not simply whether an FPGA can compare two numbers. It is whether the complete path—from physics data to a programmable FPGA decision and back to an exact reference comparison—can be made reproducible on a real board. [Sources] README.md; docs/HARDWARE_VERIFICATION.md.</aside>
   </section>
 
   <section class="slide">
-    <p class="kicker">Executive takeaway</p>
-    <h2>The project now closes a reproducible PS→PL→PS loop</h2>
-    <p class="quote">The FPGA does not parse HDF5. The PS owns files, quantization, chunking, and validation; the PL performs one deterministic trigger decision per cycle.</p>
-    <div class="metric-row">
-      <div class="metric"><div class="value">0</div><div class="label">Mismatches in real HDF5 tests<br>with zero TKEEP errors</div></div>
-      <div class="metric"><div class="value">II = 1</div><div class="label">One event accepted per PL cycle<br>through an elastic output register</div></div>
-      <div class="metric"><div class="value">28.55M/s</div><div class="label">Measured 20k-event trigger rate<br>for one DMA interval</div></div>
-    </div>
-    <div class="footer"><span>Sources: README.md · docs/HARDWARE_VERIFICATION.md</span><span>02 / 19</span></div>
-    <aside class="speaker-notes">The 28.55M events/s result is a single 20,000-event DMA interval. It excludes HDF5 reading and conversion, so it is not a sustained end-to-end throughput guarantee.</aside>
-  </section>
-
-  <section class="slide">
-    <p class="kicker">Scope and boundaries</p>
-    <h2>Version 1 deliberately closes the fixed-threshold trigger loop</h2>
-    <div class="grid-2">
-      <div>
-        <h3>Implemented in this project</h3>
-        <ul>
-          <li>Read <code>HT</code> and <code>score02</code> from HDF5</li>
-          <li>Define reproducible float-to-unsigned-fixed conversion</li>
-          <li>Transfer events into the PL through AXI DMA</li>
-          <li>Evaluate HT, AD, and total trigger decisions in parallel</li>
-          <li>DMA results back and compare exactly against NumPy</li>
-          <li>Provide one-command UART control and a PYNQ backend</li>
-        </ul>
-      </div>
-      <div class="stack">
-        <div class="panel blue">
-          <h3>Intentionally outside the V1 PL</h3>
-          <p>HDF5 parsing, threshold policy, file I/O, performance reporting, truth efficiency, and adaptive threshold control remain in software.</p>
-        </div>
-        <div class="panel warn">
-          <h3>Not yet a 40 MHz online system</h3>
-          <p>The PL runs at 100 MHz with trigger II=1, but DMA currently runs at its natural burst rate without a dedicated 40 MHz stream pacer.</p>
-        </div>
-      </div>
-    </div>
-    <div class="footer"><span>Sources: README.md · docs/HDF5_INVENTORY.md</span><span>03 / 19</span></div>
-  </section>
-
-  <section class="slide">
-    <p class="kicker">End-to-end data flow</p>
-    <h2>Events move from file to FPGA and back for exact validation</h2>
-    <div class="flow cols-4">
-      <div class="node"><b>HDF5</b><span>float32 datasets stored on the PS/SD card</span></div>
-      <div class="arrow">→</div>
-      <div class="node"><b>Python / NumPy</b><span>Chunked read, quantize, pack, and golden</span></div>
-      <div class="arrow">→</div>
-      <div class="node"><b>AXI DMA + PL</b><span>64-bit input, trigger, 32-bit output</span></div>
-      <div class="arrow">→</div>
-      <div class="node"><b>Result validation</b><span>Word-by-word compare, error indices, JSON report</span></div>
-    </div>
-    <div class="grid-3" style="margin-top:32px">
-      <div><h3>Control plane</h3><p>AXI-Lite writes thresholds and reads version/capabilities.</p></div>
-      <div><h3>Data plane</h3><p>MM2S sends events to the PL; S2MM writes results to DDR.</p></div>
-      <div><h3>Validation plane</h3><p>The same quantization rule generates a bit-exact NumPy golden.</p></div>
-    </div>
-    <div class="footer"><span>Sources: README.md · software/kr260_trigger.py</span><span>04 / 19</span></div>
-    <aside class="speaker-notes">The key design principle is separation of concerns: complex, variable file and policy work stays in the PS; deterministic, high-throughput comparisons stay in the PL.</aside>
-  </section>
-
-  <section class="slide">
-    <p class="kicker">Hardware platform</p>
-    <h2>The KR260 PS provides Linux, DDR, and control; the PL owns the data path</h2>
-    <div class="split-40">
-      <div class="stack">
-        <div class="panel blue"><h3>Device and toolchain</h3><p>AMD/Xilinx KR260<br><code>xck26-sfvc784-2LV-c</code><br>Vivado 2025.2</p></div>
-        <div class="panel"><h3>Clock and reset</h3><p>The PS generates PL0 at 100 MHz; the board reports 99.999 MHz. Synchronous reset covers DMA, SmartConnect, and trigger.</p></div>
-      </div>
-      <div>
-        <table class="compact">
-          <thead><tr><th>PS/PL interface</th><th>Purpose</th><th>Project connection</th></tr></thead>
-          <tbody>
-            <tr><td><code>M_AXI_HPM0_FPD</code></td><td>PS master controls PL</td><td>DMA and trigger registers</td></tr>
-            <tr><td><code>S_AXI_HP0_FPD</code></td><td>PL masters access DDR</td><td>MM2S/S2MM share low 2 GiB DDR</td></tr>
-            <tr><td><code>pl_clk0</code></td><td>PL clock</td><td>100 MHz across the data path</td></tr>
-            <tr><td><code>pl_resetn0</code></td><td>Reset source</td><td>Synchronized by Processor System Reset</td></tr>
-          </tbody>
-        </table>
-        <p style="margin-top:20px;color:var(--muted)">The design starts from the official KR260 PS/board configuration pattern and retains only the infrastructure required here.</p>
-      </div>
-    </div>
-    <div class="footer"><span>Sources: hw/tcl/create_project.tcl · docs/PROVENANCE.md</span><span>05 / 19</span></div>
-  </section>
-
-  <section class="slide">
-    <p class="kicker">Vivado Block Design</p>
-    <h2>Separate control and data planes keep addresses and DDR paths stable</h2>
-    <div class="plane">
-      <div class="name">Control</div>
-      <div class="path"><span>Zynq PS<br>M_AXI_HPM0</span><span>Control<br>SmartConnect</span><span>AXI DMA<br>0xA000_0000</span><span>Trigger regs<br>0xA001_0000</span></div>
-    </div>
-    <div class="plane data">
-      <div class="name">Data</div>
-      <div class="path"><span>PS DDR</span><span>DMA MM2S<br>64-bit stream</span><span>Trigger RTL<br>64 → 32 bit</span><span>DMA S2MM<br>→ DDR</span></div>
-    </div>
-    <div class="grid-3" style="margin-top:26px">
-      <div><h3>AXI DMA</h3><p>Simple/direct-register mode, scatter-gather disabled, 32-bit DMA addresses.</p></div>
-      <div><h3>SmartConnect</h3><p>Control and DDR fabrics are separate; MM2S/S2MM share the HP0 DDR port.</p></div>
-      <div><h3>Two designs</h3><p><code>trigger</code> inserts custom RTL; <code>loopback</code> directly returns the stream.</p></div>
-    </div>
-    <div class="footer"><span>Source: hw/tcl/create_project.tcl</span><span>06 / 19</span></div>
-  </section>
-
-  <section class="slide">
-    <p class="kicker">PS/PL data contract</p>
-    <h2>Floating-point data is quantized before entering the PL as fixed 64-bit events</h2>
+    <p class="kicker">The problem</p>
+    <h2>Can a physics selection be reproduced exactly inside an FPGA?</h2>
     <div class="split-60">
-      <div>
-        <h3>Input event word: little-endian <code>uint64</code></h3>
-        <div class="bitword">
-          <div class="wide accent">[63:32] anomaly score<br>×256, resolution 1/256</div>
-          <div class="wide">[31:0] HT<br>×2, resolution 0.5</div>
-        </div>
-        <h3>Canonical quantization rule</h3>
-        <pre>q = saturate_uint32(
-    round_ties_to_even(float64(value) × scale)
-)</pre>
-      </div>
+      <div><p class="quote">For every event, decide whether its transverse activity or anomaly score is large enough to keep.</p></div>
       <div class="stack">
-        <div class="panel blue"><h3>Default thresholds</h3><p>HT: <strong>218.0 → 436</strong><br>AD: <strong>250.8929737 → 64229</strong></p></div>
-        <div class="panel"><h3>Input data</h3><p>The HDF5 file contains 12 float32 datasets, each 1,662,241 entries long. V1 uses each sample's <code>ht</code> and <code>score02</code>.</p></div>
+        <div class="panel blue"><h3>Starting point</h3><p>An offline study provides HDF5 samples and a two-variable trigger rule.</p></div>
+        <div class="panel"><h3>Engineering question</h3><p>Can the same rule run in programmable logic while Linux controls it and checks every returned result?</p></div>
+        <div class="panel warn"><h3>Scope</h3><p>This is a trigger-path demonstrator—not yet a complete detector front end or a sustained 40 MHz system.</p></div>
       </div>
     </div>
-    <div class="footer"><span>Sources: docs/EVENT_FORMAT.md · docs/HDF5_INVENTORY.md</span><span>07 / 19</span></div>
+    <div class="footer"><span>Sources: Trigger_io.tex · docs/HDF5_INVENTORY.md · README.md</span><span>02 / 13</span></div>
+    <aside class="speaker-notes">The supplied data contain three event samples, but the hardware question is deliberately narrow: reproduce the notebook's threshold predicate event by event. The HDF5 file is used as a replay source so the FPGA output can be compared with a known software calculation. [Sources] Trigger_io.tex; docs/HDF5_INVENTORY.md; README.md.</aside>
   </section>
 
   <section class="slide">
-    <p class="kicker">Trigger algorithm</p>
-    <h2>The PL compares both thresholds every cycle and returns four interpretable status bits</h2>
+    <p class="kicker">Physics decision</p>
+    <h2>The trigger keeps an event if either observable exceeds its cut</h2>
     <div class="grid-2">
       <div>
-        <pre>ht_pass = ht_q &gt; ht_cut_q
-ad_pass = ad_q &gt; ad_cut_q
-total_pass = ht_pass OR ad_pass</pre>
-        <p style="margin-top:20px">Comparisons are <strong>unsigned and strictly greater-than</strong>. Equality does not pass, exactly matching the notebook and NumPy golden model.</p>
+        <h3>Two event-level inputs</h3>
+        <p><strong>H<sub>T</sub></strong> summarizes transverse activity in the event.</p>
+        <p><strong>score02</strong> is the anomaly-detection score supplied by the offline study.</p>
+        <pre style="margin-top:24px">keep = (H_T &gt; 218.0)
+    OR (score02 &gt; 250.893)</pre>
       </div>
       <div>
-        <table class="compact">
-          <thead><tr><th>Output bit</th><th>Meaning</th></tr></thead>
-          <tbody>
-            <tr><td>0</td><td><code>ht_pass</code></td></tr>
-            <tr><td>1</td><td><code>ad_pass</code></td></tr>
-            <tr><td>2</td><td><code>total_pass</code></td></tr>
-            <tr><td>3</td><td>Input <code>TKEEP != 0xff</code> error</td></tr>
-            <tr><td>[31:4]</td><td>Always zero</td></tr>
-          </tbody>
-        </table>
+        <h3>One decision, with diagnostic information</h3>
+        <table class="compact"><thead><tr><th>Returned bit</th><th>Interpretation</th></tr></thead><tbody>
+          <tr><td>HT pass</td><td>The H<sub>T</sub> cut fired</td></tr><tr><td>AD pass</td><td>The anomaly-score cut fired</td></tr><tr><td>Total pass</td><td>At least one cut fired</td></tr><tr><td>Format error</td><td>The input byte mask was malformed</td></tr>
+        </tbody></table>
+        <p style="margin-top:22px">The comparison is strictly “greater than”; equality does not pass.</p>
       </div>
     </div>
-    <div class="takeaway">The result reports both the overall decision and its source: HT, anomaly score, or both.</div>
-    <div class="footer"><span>Sources: hw/rtl/axis_trigger_core.sv · software/trigger_format.py</span><span>08 / 19</span></div>
+    <div class="takeaway">The FPGA implements the same transparent physics predicate as the software reference; it does not infer a new selection.</div>
+    <div class="footer"><span>Sources: Trigger_io.tex · docs/EVENT_FORMAT.md</span><span>03 / 13</span></div>
+    <aside class="speaker-notes">The output deliberately retains which branch accepted the event. That makes the result interpretable: an accepted event can be attributed to HT, anomaly score, or both. [Sources] Trigger_io.tex; docs/EVENT_FORMAT.md.</aside>
   </section>
 
   <section class="slide">
-    <p class="kicker">AXI4-Stream correctness</p>
-    <h2>An elastic output register preserves data and packet boundaries under backpressure</h2>
-    <div class="split-40">
-      <div>
-        <pre>s_axis_tready =
-    ~m_axis_tvalid
-    | m_axis_tready</pre>
-        <p style="margin-top:22px">A new event is accepted whenever the output register is empty or the downstream consumes the current result.</p>
-      </div>
-      <div class="stack">
-        <div class="panel good"><h3>Throughput</h3><p>Without stalls, one event enters and exits every clock: <strong>initiation interval = 1</strong>.</p></div>
-        <div class="panel"><h3>Stall behavior</h3><p>When the downstream is not ready, <code>TDATA/TKEEP/TLAST/TVALID</code> remain stable until the handshake completes.</p></div>
-        <div class="panel blue"><h3>Packet boundaries</h3><p>DMA asserts <code>TLAST</code> at each chunk boundary; the trigger propagates it to the matching result, including one-event and partial-tail packets.</p></div>
-      </div>
-    </div>
-    <div class="footer"><span>Sources: hw/rtl/axis_trigger_core.sv · docs/EVENT_FORMAT.md</span><span>09 / 19</span></div>
-  </section>
-
-  <section class="slide">
-    <p class="kicker">Runtime control</p>
-    <h2>AXI-Lite updates thresholds without regenerating the bitstream</h2>
-    <table>
-      <thead><tr><th style="width:18%">Address</th><th style="width:15%">Access</th><th>Meaning</th><th style="width:28%">Default / behavior</th></tr></thead>
-      <tbody>
-        <tr><td><code>+0x00</code></td><td>R/W</td><td>Quantized HT threshold</td><td>436</td></tr>
-        <tr><td><code>+0x04</code></td><td>R/W</td><td>Quantized AD threshold</td><td>64229</td></tr>
-        <tr><td><code>+0x08</code></td><td>R</td><td>RTL version</td><td><code>0x00010000</code></td></tr>
-        <tr><td><code>+0x0c</code></td><td>R</td><td>Capabilities</td><td><code>0x0000000f</code></td></tr>
-      </tbody>
-    </table>
-    <div class="grid-2" style="margin-top:28px">
-      <div><h3>Robust writes</h3><p>Registers support byte strobes, and AW/W channels may arrive together or independently.</p></div>
-      <div><h3>Software protection</h3><p>Python reads both thresholds back immediately after writing and aborts DMA if either value differs.</p></div>
-    </div>
-    <div class="footer"><span>Sources: hw/rtl/trigger_axi_lite_regs.sv · docs/EVENT_FORMAT.md</span><span>10 / 19</span></div>
-  </section>
-
-  <section class="slide">
-    <p class="kicker">Bitstream strategy</p>
-    <h2>Two bitstreams isolate DMA validation from trigger execution</h2>
+    <p class="kicker">Why Zynq?</p>
+    <h2>One chip combines flexible software with deterministic event logic</h2>
     <div class="grid-2">
-      <div class="panel">
-        <h3><code>kr260_loopback.bit</code></h3>
-        <p>64-bit MM2S connects directly to 64-bit S2MM.</p>
-        <ul><li>Isolates DMA, DDR, and cache issues</li><li>Contains no threshold logic</li><li>Used by menu action 2</li></ul>
-      </div>
-      <div class="panel blue">
-        <h3><code>kr260_trigger.bit</code></h3>
-        <p>64-bit inputs pass through trigger RTL and produce 32-bit results.</p>
-        <ul><li>Uses fixed MMIO addresses</li><li>Used by menu actions 3/4/5</li><li>Remains loaded after full verification</li></ul>
-      </div>
+      <div class="role"><p class="kicker">Processing system · ARM</p><h3>Prepare and supervise</h3><ul><li>Run Linux and Python</li><li>Read HDF5 files in manageable chunks</li><li>Load the FPGA bitstream and set thresholds</li><li>Move data through shared DDR</li><li>Compare FPGA results with the reference</li></ul></div>
+      <div class="role pl"><p class="kicker">Programmable logic · FPGA</p><h3>Make the event decision</h3><ul><li>Accept a stream of compact event words</li><li>Compare H<sub>T</sub> and score02 in parallel</li><li>Produce one result for every input event</li><li>Preserve event and packet ordering under stalls</li><li>Operate independently of file formats</li></ul></div>
     </div>
-    <pre style="margin-top:28px">verify: loopback.bit → DMA validation → trigger.bit →
-        deterministic vectors → single-chunk HDF5 → multi-chunk HDF5</pre>
-    <div class="footer"><span>Sources: software/kr260_board.py · hw/tcl/create_project.tcl</span><span>11 / 19</span></div>
+    <div class="footer"><span>Sources: README.md · software/kr260_trigger.py · hw/rtl/axis_trigger_core.sv</span><span>04 / 13</span></div>
+    <aside class="speaker-notes">This partition is the architectural idea of the project. It avoids putting HDF5 parsing or policy logic in hardware, while still testing the part that would need predictable event-by-event behavior. [Sources] README.md; software/kr260_trigger.py; hw/rtl/axis_trigger_core.sv.</aside>
   </section>
 
   <section class="slide">
-    <p class="kicker">Software architecture</p>
-    <h2>One application supports both PYNQ and generic Linux hardware backends</h2>
-    <div class="grid-2">
-      <div>
-        <h3>Application layer</h3>
-        <ul>
-          <li><code>kr260_trigger.py</code>: HDF5, chunking, DMA, JSON reports</li>
-          <li><code>trigger_format.py</code>: canonical quantization, packing, golden</li>
-          <li><code>deterministic_trigger_test.py</code>: boundaries and combinations</li>
-          <li><code>loopback_test.py</code>: exact DMA loopback</li>
-        </ul>
-      </div>
-      <div>
-        <h3>Hardware abstraction layer</h3>
-        <table class="compact">
-          <thead><tr><th>Backend</th><th>Bitstream/MMIO</th><th>Contiguous memory</th></tr></thead>
-          <tbody>
-            <tr><td>PYNQ</td><td><code>Bitstream</code> + <code>MMIO</code></td><td><code>allocate()</code></td></tr>
-            <tr><td>UIO</td><td><code>/dev/uio*</code></td><td><code>u-dma-buf</code></td></tr>
-          </tbody>
-        </table>
-        <p style="margin-top:18px">Both backends reuse the same AXI DMA direct-register sequence; the receive channel always starts before the transmit channel.</p>
-      </div>
-    </div>
-    <div class="takeaway">The PYNQ path is verified on this KR260. The UIO/u-dma-buf path is implemented but has not been exercised on the board's current image.</div>
-    <div class="footer"><span>Sources: software/hw_access.py · software/kr260_trigger.py</span><span>12 / 19</span></div>
+    <p class="kicker">System architecture</p>
+    <h2>Control and event data follow separate paths through the Zynq</h2>
+    <div class="lane"><div class="lane-name">Control</div><div class="lane-path"><span>Host<br>USB-UART</span><span>ARM Linux<br>Python + PYNQ</span><span>Load bitstream<br>set thresholds</span><span>AXI-Lite<br>registers</span></div></div>
+    <div class="lane data"><div class="lane-name">Event data</div><div class="lane-path"><span>HDF5<br>on ARM</span><span>DDR input<br>buffer</span><span>DMA MM2S<br>64-bit events</span><span>FPGA trigger<br>compare + OR</span><span>DMA S2MM<br>32-bit results</span><span>DDR + exact<br>software compare</span></div></div>
+    <div class="grid-3" style="margin-top:30px"><div><h3>Shared memory</h3><p>Contiguous DDR buffers connect the ARM application to DMA.</p></div><div><h3>Programmable cuts</h3><p>The ARM changes thresholds without rebuilding the FPGA.</p></div><div><h3>Closed loop</h3><p>Every FPGA word is paired with its corresponding input event.</p></div></div>
+    <div class="footer"><span>Sources: hw/tcl/create_project.tcl · software/hw_access.py · software/kr260_trigger.py</span><span>05 / 13</span></div>
+    <aside class="speaker-notes">UART is only the console used to operate the board; trigger data do not travel over UART. The event path is DDR → DMA → FPGA → DMA → DDR. [Sources] README.md; hw/tcl/create_project.tcl; software/hw_access.py.</aside>
   </section>
 
   <section class="slide">
-    <p class="kicker">HDF5 application path</p>
-    <h2>“HDF5 test” runs the complete FPGA trigger application</h2>
-    <div class="timeline">
-      <div class="milestone"><div class="tag">01 · READ</div><h3>h5py hyperslab</h3><p>Read only the current chunk of <code>bkg_ht</code> and <code>bkg_score02</code>.</p></div>
-      <div class="milestone"><div class="tag">02 · PREPARE</div><h3>Quantize and pack</h3><p>Create <code>uint64</code> inputs and compute the <code>uint32</code> golden result.</p></div>
-      <div class="milestone"><div class="tag">03 · EXECUTE</div><h3>PYNQ DMA</h3><p>Flush input, start S2MM first, then MM2S, and poll errors/timeouts.</p></div>
-      <div class="milestone"><div class="tag">04 · VERIFY</div><h3>Bit-exact compare</h3><p>Report mismatches, TKEEP errors, indices, timings, and throughput.</p></div>
-    </div>
-    <pre style="margin-top:46px">python3 software/kr260_board.py hdf5
-# defaults: bkg, start=0, count=20000, chunk-size=20000</pre>
-    <div class="footer"><span>Sources: software/kr260_trigger.py · software/kr260_board.py</span><span>13 / 19</span></div>
-  </section>
-
-  <section class="slide">
-    <p class="kicker">PYNQ integration</p>
-    <h2>Fixed-address Bitstream mode bypasses the board's xclbinutil failure</h2>
+    <p class="kicker">FPGA implementation</p>
+    <h2>The PL reduces each event to two comparisons and one OR</h2>
     <div class="split-60">
-      <div>
-        <h3>Verified loading sequence</h3>
-        <ol>
-          <li>Set <code>Clocks.fclk0_mhz = 100.0</code></li>
-          <li>Load the <code>.bit</code> with <code>Bitstream(...).download()</code></li>
-          <li>Create DMA/trigger <code>MMIO</code> mappings at fixed addresses</li>
-          <li>Use <code>allocate()</code> for physically contiguous I/O buffers</li>
-          <li>Verify addresses are below 4 GiB for the 32-bit DMA address width</li>
-        </ol>
-      </div>
-      <div class="stack">
-        <div class="panel warn"><h3>Why not Overlay?</h3><p>The board's <code>/usr/bin/xclbinutil</code> segfaulted while synthesizing an XCLBIN from HWH metadata.</p></div>
-        <div class="panel blue"><h3>Compatibility path retained</h3><p><code>--pynq-loader overlay</code> remains available when xclbinutil works and the matching HWH is present.</p></div>
-      </div>
+      <div><h3>One compact 64-bit word per event</h3><div class="bitword"><div class="accent">[63:32] score02<br>fixed-point ×256</div><div>[31:0] H<sub>T</sub><br>fixed-point ×2</div></div><pre>ht_pass = ht_q &gt; ht_cut_q
+ad_pass = score_q &gt; score_cut_q
+keep    = ht_pass OR ad_pass</pre></div>
+      <div class="stack"><div class="panel blue"><h3>Why fixed point?</h3><p>The ARM converts floating-point inputs with a documented rule. The FPGA then needs only unsigned integer comparators—small, fast, and reproducible.</p></div><div class="panel good"><h3>Streaming behavior</h3><p>An elastic register can accept one event per 100 MHz PL cycle when unstalled, while preserving packet boundaries under backpressure.</p></div><div class="panel"><h3>Runtime control</h3><p>Two AXI-Lite registers hold the cuts; software writes and reads them back before DMA begins.</p></div></div>
     </div>
-    <div class="footer"><span>Sources: software/hw_access.py · docs/HARDWARE_VERIFICATION.md</span><span>14 / 19</span></div>
+    <div class="footer"><span>Sources: docs/EVENT_FORMAT.md · hw/rtl/axis_trigger_core.sv · hw/rtl/trigger_axi_lite_regs.sv</span><span>06 / 13</span></div>
+    <aside class="speaker-notes">The fixed-point conversion is part of the interface contract, not an undocumented approximation. Both software and hardware use the same quantized values, including the strict comparison boundary. [Sources] docs/EVENT_FORMAT.md; hw/rtl/axis_trigger_core.sv; software/trigger_format.py.</aside>
   </section>
 
   <section class="slide">
-    <p class="kicker">Host control and UART</p>
-    <h2>One short command replaces long manual command lines in VS Code</h2>
-    <div class="grid-2">
-      <div>
-        <pre>python3 software/kr260_board.py</pre>
-        <ul>
-          <li>Automatically selects the KR260 FT4232H <code>if01</code></li>
-          <li>115200 / 8-N-1 / no flow control</li>
-          <li>Prompts once for a hidden password and refreshes sudo</li>
-          <li>Preserves only the environment variables PYNQ requires</li>
-          <li>Uses random markers to recover full output and remote status</li>
-        </ul>
-      </div>
-      <div class="panel blue">
-        <h3>Menu actions</h3>
-        <table class="compact">
-          <tbody>
-            <tr><td>1</td><td>Board / PYNQ information</td></tr>
-            <tr><td>2</td><td>DMA loopback</td></tr>
-            <tr><td>3</td><td>Deterministic trigger vectors</td></tr>
-            <tr><td>4</td><td>20,000-event HDF5 run</td></tr>
-            <tr><td>5</td><td>Multiple chunks + tail</td></tr>
-            <tr><td>6</td><td>Complete verification chain</td></tr>
-          </tbody>
-        </table>
-        <p style="margin-top:14px">Username, paths, bitstreams, and test parameters are embedded; the password is never stored in source.</p>
-      </div>
-    </div>
-    <div class="footer"><span>Sources: software/kr260_uart.py · software/kr260_board.py</span><span>15 / 19</span></div>
+    <p class="kicker">ARM and PYNQ software</p>
+    <h2>The ARM turns stored events into a controlled FPGA experiment</h2>
+    <div class="timeline"><div class="step"><div class="tag">01 · PREPARE</div><h3>Read and encode</h3><p>Read one HDF5 chunk, quantize both observables, and pack one word per event.</p></div><div class="step"><div class="tag">02 · CONFIGURE</div><h3>Load and program</h3><p>Load the bitstream, allocate buffers, write both cuts, and verify readback.</p></div><div class="step"><div class="tag">03 · EXECUTE</div><h3>Transfer by DMA</h3><p>Start the receiver first, send the input packet, and monitor completion and errors.</p></div><div class="step"><div class="tag">04 · VALIDATE</div><h3>Compare every event</h3><p>Calculate the same selection in NumPy and report any differing result.</p></div></div>
+    <div class="grid-2" style="margin-top:42px"><div><h3>Board-side application</h3><p>Runs on the KR260 ARM cores; HDF5 never enters the FPGA directly.</p></div><div><h3>Host-side operation</h3><p>A UART menu launches tests and returns results in a normal VS Code terminal.</p></div></div>
+    <div class="footer"><span>Sources: software/kr260_trigger.py · software/hw_access.py · software/kr260_board.py</span><span>07 / 13</span></div>
+    <aside class="speaker-notes">PYNQ is used here as a board-control layer: bitstream loading, memory-mapped register access, and physically contiguous buffers. The application controls AXI DMA directly and performs the physics-data preparation and validation itself. [Sources] software/hw_access.py; software/kr260_trigger.py; software/kr260_board.py.</aside>
   </section>
 
   <section class="slide">
-    <p class="kicker">Layered verification</p>
-    <h2>Each stage adds one risk surface, making failures easier to isolate</h2>
-    <div class="timeline">
-      <div class="milestone"><div class="tag">Stage A</div><h3>DMA loopback</h3><p>Verify DDR, buffers, cache handling, MM2S/S2MM, and TLAST.</p></div>
-      <div class="milestone"><div class="tag">Stage B</div><h3>RTL simulation</h3><p>Verify boundaries, stalls, TKEEP, TLAST, and AXI-Lite behavior.</p></div>
-      <div class="milestone"><div class="tag">Stage C</div><h3>Deterministic vectors</h3><p>Cover below/equal/above thresholds and HT-only, AD-only, both.</p></div>
-      <div class="milestone"><div class="tag">Stage D</div><h3>Real HDF5</h3><p>Run one chunk and three chunks, including a 2,241-event tail.</p></div>
-    </div>
-    <div class="grid-3" style="margin-top:52px">
-      <div><h3>Python</h3><p><span class="status">19 passed</span></p></div>
-      <div><h3>Vivado</h3><p><span class="status">Timing met</span> WNS 5.801 ns</p></div>
-      <div><h3>Physical board</h3><p><span class="status">Zero mismatch</span></p></div>
-    </div>
-    <div class="footer"><span>Sources: tests/ · docs/HARDWARE_VERIFICATION.md · reports/trigger_build_summary.txt</span><span>16 / 19</span></div>
+    <p class="kicker">Two FPGA images</p>
+    <h2>A loopback image separates data-movement failures from trigger failures</h2>
+    <div class="grid-2"><div class="role"><h3><code>kr260_loopback.bit</code></h3><p>Returns each 64-bit input word without applying a trigger.</p><ul><li>Tests DDR buffers and cache synchronization</li><li>Tests both DMA channels and packet boundaries</li><li>Answers: “Can data make a clean round trip?”</li></ul></div><div class="role pl"><h3><code>kr260_trigger.bit</code></h3><p>Replaces the direct connection with the fixed-point trigger core.</p><ul><li>Produces one 32-bit decision word per event</li><li>Uses thresholds programmed by the ARM</li><li>Answers: “Does the FPGA make the correct decision?”</li></ul></div></div>
+    <pre style="margin-top:28px">loopback image → prove transport → trigger image → prove selection</pre>
+    <div class="footer"><span>Sources: hw/tcl/create_project.tcl · software/loopback_test.py · software/deterministic_trigger_test.py</span><span>08 / 13</span></div>
+    <aside class="speaker-notes">Using two images makes debugging causal. If loopback fails, the trigger algorithm is not yet under test. If loopback passes and the trigger result fails, attention can move to formatting, thresholds, or RTL logic. [Sources] hw/tcl/create_project.tcl; software/loopback_test.py; software/deterministic_trigger_test.py.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">What was implemented</p>
+    <h2>The deliverable is a complete experiment path, not only an RTL block</h2>
+    <div class="grid-2"><div><h3>Hardware</h3><ul><li>Reproducible Vivado block design and build scripts</li><li>AXI DMA path between PS DDR and programmable logic</li><li>Custom streaming trigger core and programmable registers</li><li>Trigger and diagnostic loopback bitstreams</li></ul></div><div><h3>Software</h3><ul><li>Chunked HDF5 reader and fixed-point event encoder</li><li>PYNQ bitstream, MMIO, and DMA-buffer backend</li><li>Bit-exact NumPy model and machine-readable reports</li><li>UART console and step-by-step board menu</li></ul></div></div>
+    <div class="takeaway">Thresholds can change at runtime; the bitstream does not need to be regenerated for a new pair of cuts.</div>
+    <div class="footer"><span>Sources: README.md · hw/ · software/ · deploy/</span><span>09 / 13</span></div>
+    <aside class="speaker-notes">The implementation includes the interfaces required to connect the trigger to real data and demonstrate correctness. A standalone comparator without DMA, software control, and a reference model would not answer the end-to-end question. [Sources] README.md; hw/; software/; deploy/.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Validation strategy</p>
+    <h2>Four test layers isolate transport, RTL behavior, and data agreement</h2>
+    <div class="timeline"><div class="step"><div class="tag">A · TRANSPORT</div><h3>DMA loopback</h3><p>Send known words through DDR and DMA, then require an exact return.</p></div><div class="step"><div class="tag">B · RTL</div><h3>Simulation</h3><p>Exercise equality boundaries, stalls, byte masks, and packet endings.</p></div><div class="step"><div class="tag">C · DECISION</div><h3>Synthetic events</h3><p>Cover neither, HT only, anomaly only, both, and values exactly on each cut.</p></div><div class="step"><div class="tag">D · APPLICATION</div><h3>HDF5 replay</h3><p>Compare every FPGA result with NumPy for single- and multi-chunk data.</p></div></div>
+    <table class="compact" style="margin-top:42px"><thead><tr><th>Python tests</th><th>Vivado implementation</th><th>Physical KR260</th></tr></thead><tbody><tr><td><span class="status">19 passed</span></td><td><span class="status">Timing met</span> &nbsp; WNS 5.801 ns</td><td><span class="status">Zero mismatch</span></td></tr></tbody></table>
+    <div class="footer"><span>Sources: tests/ · hw/tb/ · docs/HARDWARE_VERIFICATION.md</span><span>10 / 13</span></div>
+    <aside class="speaker-notes">Each layer introduces one new source of complexity. This prevents a disagreement in HDF5 replay from being ambiguously blamed on DMA, formatting, comparison semantics, or the input file. [Sources] tests/; hw/tb/; docs/HARDWARE_VERIFICATION.md.</aside>
   </section>
 
   <section class="slide">
     <p class="kicker">Physical-board results · 2026-09-17</p>
-    <h2>All four board tests passed with bit-exact results</h2>
-    <table class="compact">
-      <thead><tr><th style="width:25%">Test</th><th style="width:18%">Scale</th><th style="width:24%">Measurement</th><th>Correctness</th></tr></thead>
-      <tbody>
-        <tr><td>DMA loopback</td><td>4,097 events</td><td>157.974 MB/s</td><td><span class="status">0 mismatch</span></td></tr>
-        <tr><td>Deterministic trigger</td><td>9 cases</td><td>[0,0,0,5,6,7,6,5,0]</td><td><span class="status">Exact match</span></td></tr>
-        <tr><td>Single-chunk HDF5</td><td>20,000 events</td><td>342.546 MB/s<br>28.545M events/s</td><td><span class="status">0 mismatch</span> <span class="status">0 keep error</span></td></tr>
-        <tr><td>Multi-chunk HDF5</td><td>22,241 / 3 chunks</td><td>180.641 MB/s<br>15.053M events/s</td><td><span class="status">0 mismatch</span> <span class="status">0 keep error</span></td></tr>
-      </tbody>
-    </table>
-    <div class="grid-2" style="margin-top:24px">
-      <div><h3>Board environment</h3><p>Ubuntu 22.04.5 · kernel 5.15.0-1076-xilinx-zynqmp · Python 3.10.12 · PYNQ 3.0.1</p></div>
-      <div><h3>Measurement scope</h3><p>Rates are single DMA-interval observations including buffer synchronization, excluding HDF5 read and conversion.</p></div>
-    </div>
-    <div class="footer"><span>Sources: reports/board_pynq_summary.txt · reports/board_pynq_20k.json · reports/board_pynq_multichunk.json</span><span>17 / 19</span></div>
+    <h2>The KR260 reproduced every expected result in the tested data</h2>
+    <table class="compact"><thead><tr><th style="width:26%">Test</th><th style="width:15%">Events</th><th>What was checked</th><th style="width:20%">Result</th></tr></thead><tbody><tr><td>DMA loopback</td><td>4,097</td><td>Exact 64-bit round trip through DDR and DMA</td><td><span class="status">0 mismatch</span></td></tr><tr><td>Boundary vectors</td><td>9 cases</td><td>Below, equal to, and above both cuts</td><td><span class="status">Exact match</span></td></tr><tr><td>One HDF5 chunk</td><td>20,000</td><td>FPGA decision versus NumPy for every event</td><td><span class="status">0 mismatch</span></td></tr><tr><td>Three HDF5 chunks</td><td>22,241</td><td>Two full chunks plus a 2,241-event tail</td><td><span class="status">0 mismatch</span></td></tr></tbody></table>
+    <div class="grid-2" style="margin-top:24px"><div><h3>Interface integrity</h3><p>The HDF5 tests also reported zero malformed-byte-mask errors.</p></div><div><h3>Meaning</h3><p>Fixed-point conversion, event ordering, packet boundaries, and FPGA logic all agreed with the software contract.</p></div></div>
+    <div class="footer"><span>Sources: reports/board_pynq_summary.txt · reports/board_pynq_20k.json · reports/board_pynq_multichunk.json</span><span>11 / 13</span></div>
+    <aside class="speaker-notes">Zero mismatch means equality between each returned 32-bit FPGA result and the independently calculated NumPy result for the tested events. It is a correctness result for this implementation and test set, not a physics-efficiency measurement. [Sources] reports/board_pynq_summary.txt; reports/board_pynq_20k.json; reports/board_pynq_multichunk.json.</aside>
   </section>
 
   <section class="slide">
-    <p class="kicker">Implementation quality and remaining risk</p>
-    <h2>The core loop is verified; long-term online operation still needs targeted work</h2>
-    <div class="grid-2">
-      <div class="stack">
-        <div class="panel good"><h3>Completed</h3><p>Reproducible Vivado flow; 100 MHz timing met; trigger uses 101 LUT / 147 FF; two bitstreams; PYNQ backend; UART menu; zero mismatches on real HDF5.</p></div>
-        <div class="panel blue"><h3>Engineering safeguards</h3><p>DMA error/timeout checks, reset after timeout, S2MM-first ordering, threshold readback, buffer-address bounds, and context-managed cleanup.</p></div>
-      </div>
-      <div class="stack">
-        <div class="panel warn"><h3>Not yet verified</h3><p>UIO/u-dma-buf on this board image, long-duration stress, thermal stability, interrupt mode, and controlled 40 MHz pacing.</p></div>
-        <div class="panel"><h3>Recommended next steps</h3><ol><li>Add a stream pacer and test at 40 MHz</li><li>Run long-duration and thermal stress tests</li><li>Verify UIO or converge on one PYNQ deployment path</li><li>Extend fixed cuts with a PS-side adaptive policy</li></ol></div>
-      </div>
-    </div>
-    <div class="footer"><span>Sources: docs/HARDWARE_VERIFICATION.md · reports/trigger_utilization.rpt</span><span>18 / 19</span></div>
+    <p class="kicker">Performance and limits</p>
+    <h2>The core meets timing; sustained system rate is the next question</h2>
+    <div class="metric-row"><div class="metric"><div class="value">100 MHz</div><div class="label">Implemented PL clock; timing met with 5.801 ns positive slack</div></div><div class="metric"><div class="value">II = 1</div><div class="label">One event can be accepted each unstalled PL cycle</div></div><div class="metric"><div class="value">101 / 147</div><div class="label">LUTs / flip-flops used by the custom trigger hierarchy</div></div></div>
+    <div class="grid-2" style="margin-top:28px"><div><h3>Observed transfer</h3><p>A 20,000-event DMA interval measured 28.545 million trigger results per second.</p></div><div><h3>Important limitation</h3><p>This excludes HDF5 reading and conversion and does not establish sustained operation at a controlled 40 MHz input cadence.</p></div></div>
+    <div class="footer"><span>Sources: reports/trigger_timing_summary.rpt · reports/trigger_utilization.rpt · docs/HARDWARE_VERIFICATION.md</span><span>12 / 13</span></div>
+    <aside class="speaker-notes">The core's initiation interval and clock frequency describe internal capacity. The measured DMA interval describes one validation run. Neither alone is a claim that the full application sustains a collider bunch-crossing rate. [Sources] reports/trigger_timing_summary.rpt; reports/trigger_utilization.rpt; docs/HARDWARE_VERIFICATION.md.</aside>
   </section>
 
   <section class="slide">
-    <p class="kicker">Final delivery</p>
-    <h2>From data format to board execution, the project is reproducible, explainable, and extensible</h2>
-    <div class="grid-3" style="margin-top:42px">
-      <div><h3>Hardware</h3><p>Reproducible Vivado Tcl, AXI DMA design, custom trigger RTL, AXI-Lite registers, and trigger/loopback bitstreams.</p></div>
-      <div><h3>Software</h3><p>Chunked HDF5 application, canonical golden model, PYNQ/UIO backends, deterministic tests, JSON reports, and UART menu.</p></div>
-      <div><h3>Evidence</h3><p>RTL simulation, timing/utilization/DRC reports, 19 Python tests, and layered validation on a physical KR260.</p></div>
-    </div>
-    <div class="takeaway">Fastest live demo: run <code>python3 software/kr260_board.py</code>, choose 4 for HDF5→FPGA trigger, or choose 6 for the complete verification chain.</div>
-    <div class="footer"><span>Project root: keria-board-self-driving-trigger</span><span>19 / 19</span></div>
-    <aside class="speaker-notes">The project is more than RTL or Python alone: it connects files, Linux, DDR, DMA, AXI-Stream, trigger logic, and exact result validation. The next phase should focus on rate control and long-term reliability.</aside>
+    <p class="kicker">Conclusion</p>
+    <h2>The prototype connects a physics selection to verified FPGA execution</h2>
+    <div class="grid-2"><div><h3>What has been demonstrated</h3><ul><li>The ARM transforms HDF5 observables into a documented event stream.</li><li>The FPGA applies programmable H<sub>T</sub> and anomaly-score cuts.</li><li>The complete board path returns bit-exact results on synthetic and real-file tests.</li></ul></div><div><h3>What should come next</h3><ol><li>Add a controlled 40 MHz input pacer.</li><li>Run long-duration and thermal tests.</li><li>Measure physics acceptance and background rejection across threshold choices.</li><li>Decide whether adaptive policy belongs on ARM or in later FPGA logic.</li></ol></div></div>
+    <div class="takeaway">The main result is a trustworthy hardware–software bridge: the same event definition, the same cuts, and a verifiable decision for every tested event.</div>
+    <div class="footer"><span>Sources: README.md · docs/HARDWARE_VERIFICATION.md · reports/</span><span>13 / 13</span></div>
+    <aside class="speaker-notes">The prototype answers the engineering feasibility question for the selected predicate. The next phase should connect that correctness result to system-rate requirements and physics-performance studies. [Sources] README.md; docs/HARDWARE_VERIFICATION.md; reports/.</aside>
   </section>
-
 </main>
 
-<div class="counter" id="counter">1 / 19</div>
-<div class="controls" aria-label="slide controls">
-  <button id="prev" title="Previous slide (←)">←</button>
-  <button id="notes" title="Speaker notes (N)">Notes</button>
-  <button id="next" title="Next slide (→)">→</button>
-</div>
-
+<div class="counter" id="counter">1 / 13</div>
+<div class="controls" aria-label="slide controls"><button id="prev" title="Previous slide (←)">←</button><button id="notes" title="Speaker notes (N)">Notes</button><button id="next" title="Next slide (→)">→</button></div>
 <script>
   const slides = Array.from(document.querySelectorAll('.slide'));
   const counter = document.getElementById('counter');
   let index = Math.max(0, Math.min(slides.length - 1, Number(location.hash.slice(1)) - 1 || 0));
-
-  function show(nextIndex) {
-    index = Math.max(0, Math.min(slides.length - 1, nextIndex));
-    slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
-    counter.textContent = `${index + 1} / ${slides.length}`;
-    history.replaceState(null, '', `#${index + 1}`);
-  }
-
-  function next() { show(index + 1); }
-  function prev() { show(index - 1); }
-
-  document.getElementById('next').addEventListener('click', next);
-  document.getElementById('prev').addEventListener('click', prev);
-  document.getElementById('notes').addEventListener('click', () => document.body.classList.toggle('notes-on'));
-  document.addEventListener('keydown', (event) => {
-    if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(event.key)) { event.preventDefault(); next(); }
-    if (['ArrowLeft', 'PageUp', 'Backspace'].includes(event.key)) { event.preventDefault(); prev(); }
-    if (event.key.toLowerCase() === 'n') document.body.classList.toggle('notes-on');
-    if (event.key === 'Home') show(0);
-    if (event.key === 'End') show(slides.length - 1);
-  });
-  window.addEventListener('hashchange', () => show(Number(location.hash.slice(1)) - 1 || 0));
-  show(index);
+  function show(nextIndex) { index = Math.max(0, Math.min(slides.length - 1, nextIndex)); slides.forEach((slide, i) => slide.classList.toggle('active', i === index)); counter.textContent = `${index + 1} / ${slides.length}`; history.replaceState(null, '', `#${index + 1}`); }
+  function next() { show(index + 1); } function prev() { show(index - 1); }
+  document.getElementById('next').addEventListener('click', next); document.getElementById('prev').addEventListener('click', prev); document.getElementById('notes').addEventListener('click', () => document.body.classList.toggle('notes-on'));
+  document.addEventListener('keydown', (event) => { if (['ArrowRight','PageDown',' ','Enter'].includes(event.key)) { event.preventDefault(); next(); } if (['ArrowLeft','PageUp','Backspace'].includes(event.key)) { event.preventDefault(); prev(); } if (event.key.toLowerCase() === 'n') document.body.classList.toggle('notes-on'); if (event.key === 'Home') show(0); if (event.key === 'End') show(slides.length - 1); });
+  window.addEventListener('hashchange', () => show(Number(location.hash.slice(1)) - 1 || 0)); show(index);
 </script>
 </body>
 </html>

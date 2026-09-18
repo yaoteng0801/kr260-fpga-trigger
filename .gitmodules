@@ -1,0 +1,3 @@
+[submodule "kria-vitis-platforms"]
+	path = kria-vitis-platforms
+	url = https://github.com/Xilinx/kria-vitis-platforms.git

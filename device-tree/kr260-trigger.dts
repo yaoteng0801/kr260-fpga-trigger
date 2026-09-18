@@ -1,0 +1,42 @@
+// SPDX-License-Identifier: Apache-2.0
+/dts-v1/;
+/plugin/;
+
+&fpga_full {
+    #address-cells = <2>;
+    #size-cells = <2>;
+    firmware-name = "kr260_trigger.bin";
+};
+
+&amba {
+    #address-cells = <2>;
+    #size-cells = <2>;
+
+    kr260_trigger_dma: dma@a0000000 {
+        compatible = "generic-uio";
+        linux,uio-name = "kr260-trigger-dma";
+        reg = <0x0 0xa0000000 0x0 0x00010000>;
+    };
+
+    kr260_axis_trigger: trigger@a0010000 {
+        compatible = "generic-uio";
+        linux,uio-name = "kr260-axis-trigger";
+        reg = <0x0 0xa0010000 0x0 0x00010000>;
+    };
+
+    udmabuf0 {
+        compatible = "ikwzm,u-dma-buf";
+        device-name = "udmabuf0";
+        minor-number = <0>;
+        size = <0x00400000>;
+        dma-mask = <0x00000000 0xffffffff>;
+    };
+
+    udmabuf1 {
+        compatible = "ikwzm,u-dma-buf";
+        device-name = "udmabuf1";
+        minor-number = <1>;
+        size = <0x00400000>;
+        dma-mask = <0x00000000 0xffffffff>;
+    };
+};

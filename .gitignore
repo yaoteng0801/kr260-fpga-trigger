@@ -1,0 +1,43 @@
+# Vivado/Vitis generated products
+.Xil/
+*.cache/
+*.gen/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+*.srcs/
+*.xpr
+*.jou
+*.log
+*.str
+*.pb
+*.dcp
+*.wdb
+*.xsa
+*.xclbin
+*.bit
+*.bin
+*.ltx
+*.rpx
+*.vdi
+*.wdf
+vivado*
+xsim.dir/
+
+build/
+deploy/*.dtbo
+deploy/*.bit
+deploy/*.bin
+deploy/*.xsa
+deploy/*.hwh
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Keep supplied experiment inputs explicitly visible.
+!Trigger_food_Data.h5
+!Trigger_io.tex

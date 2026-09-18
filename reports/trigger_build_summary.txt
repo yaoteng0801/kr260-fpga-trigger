@@ -1,0 +1,8 @@
+mode=trigger
+vivado=2025.2
+part=xck26-sfvc784-2LV-c
+board_part=xilinx.com:kr260_som_som240_1_connector_kr260_carrier_som240_1_connector_som240_2_connector_kr260_carrier_som240_2_connector:part0:1.1
+synthesis_status=synth_design Complete!
+implementation_status=write_bitstream Complete!
+trigger_initiation_interval_cycles=1
+trigger_latency_cycles=1

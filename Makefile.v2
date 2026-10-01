@@ -1,0 +1,42 @@
+VIVADO ?= vivado
+VIVADO_ENV ?= env -u PYTHONPATH
+PYTHON ?= python3
+DTC ?= dtc
+JOBS ?= 8
+
+.PHONY: project bitstream overlay bundle sim test smoke
+
+project:
+	mkdir -p build/logs
+	$(VIVADO_ENV) $(VIVADO) -mode batch -notrace \
+		-journal build/logs/create_trigger_v2.jou \
+		-log build/logs/create_trigger_v2.log \
+		-source hw/tcl/create_v2_project.tcl
+
+bitstream: project
+	mkdir -p build/logs
+	$(VIVADO_ENV) $(VIVADO) -mode batch -notrace \
+		-journal build/logs/build_trigger_v2.jou \
+		-log build/logs/build_trigger_v2.log \
+		-source hw/tcl/build_v2_bitstream.tcl -tclargs $(JOBS)
+
+overlay: deploy/kr260-trigger-v2.dtbo
+
+deploy/kr260-trigger-v2.dtbo: device-tree/kr260-trigger-v2.dts
+	mkdir -p deploy
+	$(DTC) -@ -I dts -O dtb -o $@ $<
+
+bundle: bitstream overlay
+
+sim:
+	mkdir -p build/logs
+	$(VIVADO_ENV) $(VIVADO) -mode batch -notrace \
+		-journal build/logs/sim_v2.jou -log build/logs/sim_v2.log \
+		-source hw/tcl/run_v2_sim.tcl
+
+test:
+	$(PYTHON) -m pytest -q tests
+
+smoke:
+	$(PYTHON) software/kr260_trigger_v2.py Trigger_food_Data_Extended.h5 \
+		--sample bkg --count 20000 --software-only

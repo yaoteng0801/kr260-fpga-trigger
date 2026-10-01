@@ -36,7 +36,9 @@ DEFAULT_TIMEOUT = 120.0
 BOARD_APP = PurePosixPath("/home/ubuntu/notebooks/Trigger/kr260_trigger_app")
 PYNQ_PYTHON = PurePosixPath("/usr/local/share/pynq-venv/bin/python3")
 HDF5_FILE = PurePosixPath("../Trigger_food_Data.h5")
+EXTENDED_HDF5_FILE = PurePosixPath("../Trigger_food_Data_Extended.h5")
 TRIGGER_BIT = PurePosixPath("deploy/kr260_trigger.bit")
+TRIGGER_V2_BIT = PurePosixPath("deploy/kr260_trigger_v2.bit")
 LOOPBACK_BIT = PurePosixPath("deploy/kr260_loopback.bit")
 
 
@@ -102,6 +104,48 @@ def multichunk_command() -> str:
         count=22_241,
         chunk_size=10_000,
         report="reports/board_pynq_multichunk.json",
+    )
+
+
+def deterministic_v2_command() -> str:
+    return _in_app(
+        f"{_q(PYNQ_PYTHON)} software/deterministic_trigger_test_v2.py "
+        f"--backend pynq --bitstream {_q(TRIGGER_V2_BIT)} --timeout 10"
+    )
+
+
+def hdf5_v2_command(
+    sample: str = "bkg",
+    start: int = 0,
+    count: int = 20_000,
+    chunk_size: int = 20_000,
+    report: str | None = None,
+    adaptive_mode: str = "none",
+) -> str:
+    command = (
+        f"{_q(PYNQ_PYTHON)} software/kr260_trigger_v2.py {_q(EXTENDED_HDF5_FILE)} "
+        f"--sample {_q(sample)} --start {start} --count {count} "
+        f"--chunk-size {chunk_size} --adaptive-mode {_q(adaptive_mode)} "
+        f"--backend pynq --bitstream {_q(TRIGGER_V2_BIT)} --timeout 10"
+    )
+    if report:
+        command += f" --json-report {_q(report)}"
+    return _in_app(command)
+
+
+def v2_steps(args: argparse.Namespace) -> tuple[tuple[str, str], ...]:
+    return (
+        ("V2 directed 22-item test", deterministic_v2_command()),
+        (
+            "V2 Extended HDF5 test",
+            hdf5_v2_command(
+                sample=args.sample,
+                start=args.start,
+                count=args.count,
+                chunk_size=args.chunk_size,
+                report=args.report,
+            ),
+        ),
     )
 
 
@@ -210,6 +254,36 @@ def run_named(session: BoardSession, name: str, args: argparse.Namespace) -> int
             if returncode != 0:
                 return returncode
         return 0
+    if name == "v2-deterministic":
+        return session.run(deterministic_v2_command())
+    if name == "v2-hdf5":
+        return session.run(
+            hdf5_v2_command(
+                sample=args.sample,
+                start=args.start,
+                count=args.count,
+                chunk_size=args.chunk_size,
+                report=args.report,
+            )
+        )
+    if name == "v2-adaptive":
+        return session.run(
+            hdf5_v2_command(
+                sample=args.sample,
+                start=args.start,
+                count=args.count,
+                chunk_size=args.chunk_size,
+                report=args.report,
+                adaptive_mode=args.adaptive_mode,
+            )
+        )
+    if name == "v2-verify":
+        for title, command in v2_steps(args):
+            print(f"\n===== {title} =====", flush=True)
+            returncode = session.run(command)
+            if returncode != 0:
+                return returncode
+        return 0
     raise UartError(f"unknown board action: {name}")
 
 
@@ -221,6 +295,10 @@ def interactive_menu(session: BoardSession, args: argparse.Namespace) -> int:
         "4": "hdf5",
         "5": "multichunk",
         "6": "verify",
+        "7": "v2-deterministic",
+        "8": "v2-hdf5",
+        "9": "v2-adaptive",
+        "10": "v2-verify",
     }
     while True:
         print(
@@ -231,6 +309,10 @@ def interactive_menu(session: BoardSession, args: argparse.Namespace) -> int:
             "  4. HDF5 test (20,000 events)\n"
             "  5. Multi-chunk tail test\n"
             "  6. Run all verification steps\n"
+            "  7. V2 directed 22-item test\n"
+            "  8. V2 Extended HDF5 test\n"
+            "  9. V2 adaptive Extended HDF5 test\n"
+            " 10. Run V2 directed + HDF5 verification\n"
             "  0. Exit"
         )
         choice = input("Select: ").strip()
@@ -238,7 +320,7 @@ def interactive_menu(session: BoardSession, args: argparse.Namespace) -> int:
             return 0
         action = choices.get(choice)
         if action is None:
-            print("Please enter 0-6.", file=sys.stderr)
+            print("Please enter 0-10.", file=sys.stderr)
             continue
         returncode = run_named(session, action, args)
         if returncode != 0:
@@ -250,7 +332,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "action",
         nargs="?",
-        choices=("menu", "info", "loopback", "deterministic", "hdf5", "multichunk", "verify"),
+        choices=(
+            "menu",
+            "info",
+            "loopback",
+            "deterministic",
+            "hdf5",
+            "multichunk",
+            "verify",
+            "v2-deterministic",
+            "v2-hdf5",
+            "v2-adaptive",
+            "v2-verify",
+        ),
         default="menu",
     )
     parser.add_argument("--username", default=DEFAULT_USERNAME)
@@ -264,6 +358,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--count", type=int, default=20_000)
     parser.add_argument("--chunk-size", type=int, default=20_000)
     parser.add_argument("--report")
+    parser.add_argument(
+        "--adaptive-mode", choices=("local", "gradient"), default="local"
+    )
     return parser
 
 

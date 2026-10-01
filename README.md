@@ -39,6 +39,63 @@ The 13-slide English project overview, written for a physics audience, is availa
 Open it in a browser and use the arrow keys to navigate or `Ctrl+P` to export
 the slides to PDF.
 
+## Extended adaptive-menu software
+
+The original HT+AD FPGA path remains unchanged. An additional PS/offline
+reference now models the notebook's full 22-item menu and fixed, local-search,
+or finite-difference-gradient threshold updates:
+
+```bash
+python3 software/adaptive_trigger_menu.py Trigger_food_Data_Extended.h5 \
+  --mode local --count 100000 --summary-json adaptive-summary.json
+```
+
+This command requires the extended HDF5 schema; the supplied
+`Trigger_food_Data.h5` continues to serve the existing two-item application.
+Truth-labelled `tt` and `aa` samples are optional and are used only for offline
+efficiency studies. See [`docs/ADAPTIVE_MENU.md`](docs/ADAPTIVE_MENU.md) for the
+data contract, controller objectives, V1 compatibility path, and V2 FPGA
+boundary.
+
+## V2 22-item FPGA path
+
+V2 is now implemented alongside V1. ARM computes the 22 physics variables
+from Extended HDF5 data, packs them into 11 64-bit AXI beats per event, and
+streams them through the existing simple-mode AXI DMA. FPGA logic applies 22
+runtime-writable strict thresholds and returns one 32-bit decision mask.
+Optional local or gradient adaptation runs on ARM between chunks; the event
+comparisons remain in FPGA.
+
+```bash
+# Local tests and two self-checking RTL simulations
+make -f Makefile.v2 test
+make -f Makefile.v2 sim VIVADO=vivado
+
+# Regenerate, implement, and export BIT/BIN/HWH plus reports
+make -f Makefile.v2 bitstream VIVADO=vivado JOBS=4
+make -f Makefile.v2 overlay DTC=dtc
+
+# Dataset-independent board test
+python3 software/deterministic_trigger_test_v2.py \
+  --backend pynq --bitstream deploy/kr260_trigger_v2.bit
+
+# Extended HDF5 board or software replay
+python3 software/kr260_trigger_v2.py Trigger_food_Data_Extended.h5 \
+  --sample bkg --count 20000 --backend pynq \
+  --bitstream deploy/kr260_trigger_v2.bit
+```
+
+The generated design meets 100 MHz timing with +4.985 ns setup slack and
+uses 681 LUT / 837 FF for the V2 trigger block. The complete event protocol,
+register map, build results, and validation boundary are documented in
+[`docs/V2_HARDWARE.md`](docs/V2_HARDWARE.md).
+
+Physical KR260 tests passed for 69 directed events, 20,000 fixed-cut Extended
+HDF5 events, and three adaptive 10,000-event chunks. All comparisons had zero
+mismatches and zero stream errors. Machine-readable results are in
+[`reports/board_v2_20k.json`](reports/board_v2_20k.json) and
+[`reports/board_v2_adaptive_30k.json`](reports/board_v2_adaptive_30k.json).
+
 The official AMD/Xilinx platform source is tracked as a submodule at the
 commit documented in `docs/PROVENANCE.md`. Clone with submodules when that
 reference source is needed:
@@ -117,6 +174,12 @@ python3 software/kr260_board.py deterministic
 python3 software/kr260_board.py hdf5
 python3 software/kr260_board.py multichunk
 python3 software/kr260_board.py verify
+
+# V2 entries use the new 22-item bitstream and Extended HDF5 file.
+python3 software/kr260_board.py v2-deterministic
+python3 software/kr260_board.py v2-hdf5
+python3 software/kr260_board.py v2-adaptive --adaptive-mode local
+python3 software/kr260_board.py v2-verify
 ```
 
 The default username is `ubuntu`; override it with `--username` if the board
@@ -226,8 +289,9 @@ the measured results and remaining UIO-path limitations.
 - AXI DMA runs at its natural burst rate. The 100 MHz PL clock and II=1 trigger
   do **not** claim a physical 40 MHz bunch-crossing cadence. Add an explicit
   stream pacer later if controlled playback is required.
-- The optional adaptive threshold controller is not part of this first fixed-
+- The optional adaptive threshold controller is not part of the V1 fixed-
   threshold implementation. It belongs in PS software after Stages A-D pass.
+  V2 can apply it between DMA chunks while keeping event decisions in PL.
 - Truth-labeled `tt`/`aa` efficiencies in the exported notebook are offline
   analysis quantities; they are not observable online background-rate inputs.
 - The preserved top-level `create_kr260_project.tcl` and

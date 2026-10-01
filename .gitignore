@@ -32,6 +32,12 @@ deploy/*.bin
 deploy/*.xsa
 deploy/*.hwh
 
+# Keep the reproducible V2 deployment bundle under version control.
+!deploy/kr260_trigger_v2.bit
+!deploy/kr260_trigger_v2.bin
+!deploy/kr260_trigger_v2.hwh
+!deploy/kr260-trigger-v2.dtbo
+
 # Python
 __pycache__/
 *.py[cod]
